@@ -1,0 +1,16 @@
+{
+  "name": "urbaneye",
+  "version": "1.0.0",
+  "description": "AI-Powered Community Issue Tracker",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build step'"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "compromise": "^14.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.0"
+  }
+}
