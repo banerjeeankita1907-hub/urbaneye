@@ -1,0 +1,7 @@
+body { background: #f8f9fa; }
+#map { height: 80vh; border-radius: 10px; }
+.card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.list-group-item { cursor: pointer; }
+.severity-high { border-left: 5px solid #dc3545; }
+.severity-medium { border-left: 5px solid #ffc107; }
+.severity-low { border-left: 5px solid #28a745; }
