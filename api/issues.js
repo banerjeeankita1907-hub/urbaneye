@@ -1,58 +1,75 @@
-const { kv } = require('@vercel/kv');
-const { v4: uuidv4 } = require('uuid');
-const { authMiddleware } = require('./middleware');
-const nlp = require('compromise');
+const { kv } = require("@vercel/kv");
+const { v4: uuidv4 } = require("uuid");
+const { authMiddleware } = require("./middleware");
+const { validateIssue } = require("./validation");
 
 function analyzeSeverity(description) {
   const lower = description.toLowerCase();
-  if (/urgent|danger|emergency|fire|flood|accident|collapse|severe|immediate/.test(lower)) return 'high';
-  if (/broken|damage|hole|leak|blocked|faulty|pothole|waste/.test(lower)) return 'medium';
-  return 'low';
+  if (/urgent|danger|emergency|fire|flood|accident|collapse|severe|immediate/.test(lower)) return "high";
+  if (/broken|damage|hole|leak|blocked|faulty|pothole|waste/.test(lower)) return "medium";
+  return "low";
 }
 
 module.exports = async (req, res) => {
-  if (req.method === 'POST') {
+  if (req.method === "POST") {
     const authenticated = await authMiddleware(req, res);
     if (!authenticated) return;
+
+    const checked = validateIssue(req.body);
+    if (checked.error) return res.status(400).json({ error: checked.error });
+
     try {
-      const { description, category, latitude, longitude, photo } = req.body;
-      if (!description || !category || !latitude || !longitude) {
-        return res.status(400).json({ error: 'Missing fields' });
-      }
+      const { description, category, latitude, longitude, photo } = checked.value;
       const id = uuidv4();
-      const severity = analyzeSeverity(description);
       const issue = {
         id,
         description,
         category,
-        severity,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        photo: photo || null, // base64 encoded image
-        status: 'open',
+        severity: analyzeSeverity(description),
+        latitude,
+        longitude,
+        photo,
+        status: "open",
         reported_by: req.user.id,
-        reporter_name: req.user.email,
-        created_at: new Date().toISOString()
+        reporter_email: req.user.email,
+        created_at: new Date().toISOString(),
       };
       await kv.hset(`issue:${id}`, issue);
-      res.status(201).json({ id, severity });
-    } catch (err) {
-      res.status(500).json({ error: 'Report failed' });
+      return res.status(201).json({ id, severity: issue.severity, status: issue.status });
+    } catch (error) {
+      console.error("Issue report error:", error.message);
+      return res.status(500).json({ error: "Report could not be saved" });
     }
-  } else if (req.method === 'GET') {
+  }
+
+  if (req.method === "GET") {
     try {
-      const keys = await kv.keys('issue:*');
+      const keys = await kv.keys("issue:*");
       const issues = [];
       for (const key of keys) {
         const issue = await kv.hgetall(key);
-        if (issue) issues.push(issue);
+        if (!issue) continue;
+        // Public map/list responses intentionally exclude private reporter data
+        // and base64 photos to avoid leaking email addresses or huge payloads.
+        issues.push({
+          id: issue.id,
+          description: issue.description,
+          category: issue.category,
+          severity: issue.severity,
+          latitude: Number(issue.latitude),
+          longitude: Number(issue.longitude),
+          status: issue.status,
+          created_at: issue.created_at,
+        });
       }
-      issues.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      res.json(issues);
-    } catch (err) {
-      res.status(500).json({ error: 'Could not fetch issues' });
+      issues.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+      return res.status(200).json(issues);
+    } catch (error) {
+      console.error("Issue listing error:", error.message);
+      return res.status(500).json({ error: "Could not fetch issues" });
     }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
   }
+
+  res.setHeader("Allow", "GET, POST");
+  return res.status(405).json({ error: "Method not allowed" });
 };
