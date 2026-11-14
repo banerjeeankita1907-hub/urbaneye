@@ -25,6 +25,12 @@ function onMapClick(e) {
   userMarker = L.marker(e.latlng).addTo(map).bindPopup('Issue location').openPopup();
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+}
+
 async function loadIssues() {
   const res = await fetch('/api/issues');
   const issues = await res.json();
@@ -32,7 +38,7 @@ async function loadIssues() {
   issues.forEach(iss => {
     const color = iss.severity === 'high' ? 'red' : iss.severity === 'medium' ? 'orange' : 'green';
     L.circleMarker([iss.latitude, iss.longitude], { radius: 8, color, fillOpacity: 0.8 }).addTo(map)
-      .bindPopup(`<b>${iss.category}</b><br>${iss.description}<br><i>${iss.severity} priority</i>`);
+      .bindPopup(`<b>${escapeHtml(iss.category)}</b><br>${escapeHtml(iss.description)}<br><i>${escapeHtml(iss.severity)} priority</i>`);
   });
   renderIssueList(issues);
 }
@@ -41,9 +47,9 @@ function renderIssueList(issues) {
   const list = document.getElementById('issueList');
   list.innerHTML = issues.slice(0, 10).map(iss => `
     <li class="list-group-item severity-${iss.severity}">
-      <strong>${iss.category}</strong><br>
-      <small>${iss.description.substring(0, 60)}...</small>
-      <span class="badge bg-${iss.severity === 'high' ? 'danger' : iss.severity === 'medium' ? 'warning' : 'success'} float-end">${iss.severity}</span>
+      <strong>${escapeHtml(iss.category)}</strong><br>
+      <small>${escapeHtml(String(iss.description || '').substring(0, 60))}...</small>
+      <span class="badge bg-${iss.severity === 'high' ? 'danger' : iss.severity === 'medium' ? 'warning' : 'success'} float-end">${escapeHtml(iss.severity)}</span>
     </li>`).join('');
 }
 
