@@ -1,10 +1,11 @@
 {
   "name": "urbaneye",
-  "version": "1.0.0",
-  "description": "AI-Powered Community Issue Tracker",
+  "version": "1.1.0",
+  "description": "Community issue reporting with validated geospatial submissions and privacy-aware public feeds",
   "main": "index.js",
   "scripts": {
-    "build": "echo 'No build step'"
+    "test": "node --test",
+    "check": "node --check api/dashboard.js && node --check api/issues.js && node --check api/login.js && node --check api/middleware.js && node --check api/register.js && node --check api/validation.js && node --check public/app.js"
   },
   "dependencies": {
     "@vercel/kv": "^1.0.0",
@@ -12,5 +13,8 @@
     "compromise": "^14.10.0",
     "jsonwebtoken": "^9.0.2",
     "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
